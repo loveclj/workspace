@@ -1,0 +1,7 @@
+#ignore
+*.o
+Debug
+.metadata
+.cproject
+.project
+conf
