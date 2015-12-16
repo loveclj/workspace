@@ -72,16 +72,85 @@ string getDateStamp(const string & amz_date)
     return stamp;
 }
 
-void setRequestHeader(HTTPRequest &request)
+void setRequestHeader(HTTPRequest &request,string& http_body, string access_key, string secret)
 {
+			string method("POST");
+			string service("dynamodb");
+			//string host("dynamodb.cn-north-1.amazonaws.com.cn");
+			string host("192.168.6.170");
+			//string host("dynamodb.cn-north-1.amazonaws.cn");
+			string uri("/");
+			string region("cn-north-1");
+			string content_type("application/x-amz-json-1.0");
+			string amz_target("DynamoDB_20120810.Scan");
+			string query_string("");
+			string algorithm("AWS4-HMAC-SHA256");
+
+			string amz_date = getAmzDate();
+			string amz_stamp = getDateStamp(amz_date);
+			//string amz_date = "20151212Z0922T";
+			//string amz_stamp = "20151212";//getDateStamp(amz_date);
+
+			string cannocial_header("");
+			cannocial_header += "content-type:" + content_type + "\n" + \
+					             "host:" + host + "\n" + \
+					             "x-amz-date:" + amz_date + "\n" + \
+					             "x-amz-target:" + amz_target + "\n";
+
+			string signed_headers("content-type;host;x-amz-date;x-amz-target");
+
+			string sha256("SHA256");
+			//Poco::Crypto::DigestEngine engine(sha256);
+
+			//engine.update(http_body);
+
+			//Poco::DigestEngine::Digest payload = engine.digest();
+			//string payload_hash((Poco::Crypto::DigestEngine::digestToHex(payload)));
+
+			string payload_hash = AWSV4::sha256_base16(http_body);
+
+			string canonical_request  = method + "\n" + uri + "\n"  + \
+					                    query_string  +"\n" + cannocial_header + "\n" + \
+					                    signed_headers + "\n" + payload_hash;
+
+			//engine.update(canonical_request);
+			//Poco::DigestEngine::Digest canonical_request_digest = engine.digest();
+			//string canonical_request_hash(Poco::Crypto::DigestEngine::digestToHex((canonical_request_digest)));
+			string canonical_request_hash= AWSV4::sha256_base16(canonical_request);
+			string credential_scope = amz_stamp + "/" + region + "/" + service + "/" + "aws4_request";
+			string string_to_sign   = algorithm + "\n" + amz_date + "\n" + credential_scope + "\n" + canonical_request_hash;
+
+
+			string signature = AWSV4::calculate_signature(amz_stamp,
+					   	   	   	   	   	   	   	   	   	    secret,
+			                                                region,
+			                                                service,
+			                                                string_to_sign);
+
+
+			cout << signature << endl;
+
+
+			cout << amz_stamp << endl;
+			cout << region << endl;
+			cout << service << endl;
+			cout << secret << endl;
+			cout << string_to_sign << endl;
+
+			string authorization_header = algorithm + " " + "Credential=" + access_key + "/" + \
+					                      credential_scope + "," + "SignedHeaders=" + signed_headers + ", " + \
+					                      "Signature=" + signature;
+
+			cout << authorization_header  << endl;
+
  //   HTTPRequest request(HTTPRequest::HTTP_POST, "/", HTTPRequest::HTTP_1_1);
     request.setVersion(HTTPRequest::HTTP_1_1);
-    request.setURI("/");
+    request.setURI(uri.c_str());
     request.setMethod(HTTPRequest::HTTP_POST);
  //   request.set("Method", HTTPRequest::HTTP_POST);
-    request.set("X-Amz-Date", getAmzDate().c_str());
-    request.set("X-Amz-Target", "DynamoDB_20120810.Scan");
-    request.set("Authorization", "AWS4-HMAC-SHA256 Credential=landscape/20150801/us-east-1/dynamodb/aws4_request, SignedHeaders=host;x-amz-date;x-amz-target, Signature=");
+    request.set("X-Amz-Date", amz_date.c_str());
+    request.set("X-Amz-Target", amz_target.c_str());
+    request.set("Authorization", authorization_header.c_str());
 }
 
 void setSession(HTTPClientSession &session, string &host, Poco::UInt16 port )
@@ -115,78 +184,11 @@ int main(int argc, char **argv)
 	fstream secretfile("./conf/keys.text");
 	secretfile >> access_key;
 	secretfile >> secret;
+	//secret = "oHd73jvubb/RhgzeHsuAKCAELBGuI4qAhaeE3hvT";
 	if(access_key.empty() || secret.empty() )
 	{
 		cout << "aws: access id or secret key empty " << endl;
 		return -1;
-	}
-
-
-
-	{
-		string method("POST");
-		string service("dynamodb");
-		string host("dynamodb.us-east-1.amazonaws.com");
-		string uri("/");
-		string region("us-east-1");
-		string content_type("application/x-amz-json-1.0");
-		string amz_target("DynamoDB_20120810.Scan");
-		string query_string("");
-		string algorithm("AWS4-HMAC-SHA256");
-
-//		string amz_date = getAmzDate();
-//		string amz_stamp = getDateStamp(amz_date);
-				string amz_date = "20151212Z0922T";
-				string amz_stamp = "20151212";//getDateStamp(amz_date);
-
-		string cannocial_header("");
-		cannocial_header += "content-type:" + content_type + "\n" + \
-				             "host:" + host + "\n" + \
-				             "x-amz-date:" + amz_date + "\n" + \
-				             "x-amz-target:" + amz_target + "\n";
-		string signed_headers("content-type;host;x-amz-date;x-amz-target");
-
-		string sha256("SHA256");
-		Poco::Crypto::DigestEngine engine(sha256);
-		//engine.update(body);
-		engine.update("{test query}");
-		//string paylod_hash(engine.digest());
-		Poco::DigestEngine::Digest payload = engine.digest();
-		string payload_hash((Poco::Crypto::DigestEngine::digestToHex(payload)));
-		cout << "parameter hash" << endl;
-		cout << payload_hash << endl;
-
-		string canonical_request  = method + "\n" + uri + "\n"  + \
-				                    query_string  +"\n" + cannocial_header + "\n" + \
-				                    signed_headers + "\n" + payload_hash;
-
-		engine.update(canonical_request);
-		Poco::DigestEngine::Digest canonical_request_digest = engine.digest();
-		string canonical_request_hash(Poco::Crypto::DigestEngine::digestToHex((canonical_request_digest)));
-		cout << "canoncal requeset" << endl;
-		cout << canonical_request << endl;
-		cout << "cannoncal request hash " << endl;
-		cout << canonical_request_hash << endl;
-
-		string credential_scope = amz_stamp + "/" + region + "/" + service + "/" + "aws4_request";
-		string string_to_sign   = algorithm + "\n" + amz_date + "\n" + credential_scope + "\n" + canonical_request_hash;
-		cout << "string to sinbg" << endl;
-		cout << string_to_sign << endl;
-		cout << "---" << endl;
-
-
-		string signature = AWSV4::calculate_signature(amz_stamp,
-				   	   	   	   	   	   	   	   	   	    secret,
-		                                                region,
-		                                                service,
-		                                                string_to_sign);
-
-		string authorization_header = algorithm + " " + "Credential=" + access_key + "/" + \
-				                      credential_scope + "," + "SignedHeaders=" + signed_headers + ", " + \
-				                      "Signature=" + signature;
-
-		cout << authorization_header  << endl;
-
 	}
 
 
@@ -202,7 +204,7 @@ int main(int argc, char **argv)
     setSession(session, dbHost, dbPort);
 
     HTTPRequest request;
-    setRequestHeader(request);
+    setRequestHeader(request,body, access_key, secret);
     request.setContentLength(body.length());
 
     ostream & os =  session.sendRequest(request);
@@ -213,8 +215,9 @@ int main(int argc, char **argv)
 
     int statusCode = (int)res.getStatus();
     string status = res.getReason();
-   // cout << status << endl;
-  //  cout << statusCode << endl;
+    cout << status << endl;
+
+    cout << statusCode << endl;
 
     string uuid_str;
     is >> uuid_str;
@@ -227,7 +230,7 @@ int main(int argc, char **argv)
     for(rapidjson::SizeType i = 0; i < uuids.Size();++i)
     {
         string id = uuids[i]["patent_id"]["S"].GetString();
-        //cout << id << endl;
+       // cout << id << endl;
     }
 
  //   BSONBuilder buildObj;
