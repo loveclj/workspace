@@ -227,6 +227,14 @@ int main(int argc, char **argv)
     Document uuid_doc;
     uuid_doc.Parse<0>(uuid_str.c_str());
     Value& uuids = uuid_doc["Items"];
+    if(uuids.IsArray())
+    {
+    	cout << "is array" << endl;
+    }
+    if(uuids.IsObject())
+    {
+    	cout << "is obj" << endl;
+    }
     for(rapidjson::SizeType i = 0; i < uuids.Size();++i)
     {
         string id = uuids[i]["patent_id"]["S"].GetString();

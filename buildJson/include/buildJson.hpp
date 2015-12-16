@@ -1,11 +1,10 @@
 #ifndef _BUILDJSON_HPP_
 #define _BUILDJSON_HPP_
 
-#include "common.hpp"
+#include "jsonAPI.hpp"
 
 namespace JSONAPI {
 
-const char *ENDFIELD = "\n";
 
 /*
  * Function:        //JsonAddObjByMap
@@ -40,7 +39,7 @@ void JsonAddObjByMap(Json &json, map<string, string> &fieldValue,
  * Others:          // type of  value could not be string or pointer,JsonAddMember<Json,string> forbidden
  */
 template<typename Json, typename T>
-void JsonAddMember(Json *pjson, string field, T &value,
+void JsonAddMember(Json &json, string field, T &value,
 		Document::AllocatorType &allocator);
 
 /*
@@ -53,7 +52,7 @@ void JsonAddMember(Json *pjson, string field, T &value,
  */
 
 template<typename Json>
-void JsonAddMember(Json *pjson, string field, string &value,
+void JsonAddMember(Json &json, string field, string &value,
 		Document::AllocatorType &allocator);
 
 /*
@@ -90,7 +89,7 @@ void JsonAddObjByMap(Json &json, map<string, T> &fieldValue,
  *                     JsonAddArray<Json, string> forbidden
  */
 template<typename Json, typename T>
-void JsonAddArray(Json *pjson, T element, Document::AllocatorType &allocator);
+void JsonAddArray(Json &json, T element, Document::AllocatorType &allocator);
 
 /*
  * Function:        //JsonAddArray
@@ -101,7 +100,7 @@ void JsonAddArray(Json *pjson, T element, Document::AllocatorType &allocator);
  * Others:          // JsonAddArray doesn't check pjson is array or not, if pjson is not array, fatal error occurs;
  */
 template<typename Json>
-void JsonAddArray(Json *pjson, string element,
+void JsonAddArray(Json &json, string element,
 		Document::AllocatorType &allocator);
 
 /*
@@ -115,6 +114,8 @@ void JsonAddArray(Json *pjson, string element,
 template<typename Json, typename T>
 void JsonAddArrayByVector(Json &json, vector<T> &fieldValue,
 		Document::AllocatorType & allocator, ...);
+
+
 
 template<typename Json, typename T>
 void JsonAddObjByMap(Json &json, map<string, T> &fieldValue,
@@ -134,15 +135,15 @@ void JsonAddObjByMap(Json &json, map<string, string> &fieldValue,
 	}
 }
 template<typename Json, typename T>
-void JsonAddMember(Json *pjson, string field, T &value,
+void JsonAddMember(Json &json, string field, T &value,
 		Document::AllocatorType &allocator) {
-	pjson->AddMember(field.c_str(), value, allocator);
+	json.AddMember(field.c_str(), value, allocator);
 }
 
 template<typename Json>
-void JsonAddMember(Json *pjson, string field, string &value,
+void JsonAddMember(Json &json, string field, string &value,
 		Document::AllocatorType &allocator) {
-	pjson->AddMember(field.c_str(), value.c_str(), allocator);
+	json.AddMember(field.c_str(), value.c_str(), allocator);
 }
 
 template<typename Json, typename T>
@@ -165,7 +166,7 @@ void JsonAddObjByMap(Json &json, map<string, T> &fieldValue,
 
 	for (typename map<string, T>::iterator iter = fieldValue.begin();
 			iter != fieldValue.end(); iter++) {
-		JsonAddMember(v, iter->first, iter->second, allocator);
+		JsonAddMember(*v, iter->first, iter->second, allocator);
 	}
 }
 
@@ -197,20 +198,53 @@ void JsonAddObjByMap(Json &json, map<string, T> &fieldValue,
 
 	for (typename map<string, T>::iterator iter = fieldValue.begin();
 			iter != fieldValue.end(); iter++) {
-		JsonAddMember(v, iter->first, iter->second, allocator);
+		JsonAddMember(*v, iter->first, iter->second, allocator);
 	}
 
 }
 
 template<typename Json, typename T>
-void JsonAddArray(Json *pjson, T element, Document::AllocatorType &allocator) {
-	pjson->PushBack(element, allocator);
+void JsonAddObjByKeyValue(Json &json, string first, T &second,
+		Document::AllocatorType & allocator, ...) {
+
+	va_list args;
+	va_start(args, allocator);
+
+	Value *v = &json;
+	const char *field;
+	while (true) {
+		field = va_arg(args, const char *);
+		if (strcmp(field, ENDFIELD) == 0) {
+			break;
+		}
+
+		if (!v->HasMember(field)) {
+			Value empty;
+			empty.SetObject();
+			v->AddMember(field, empty, allocator);
+			//	break;
+		}
+
+		v = &((*v)[field]);
+
+	}
+	va_end(args);
+
+
+	JsonAddMember(*v,first, second, allocator);
+
+
+}
+
+template<typename Json, typename T>
+void JsonAddArray(Json &json, T element, Document::AllocatorType &allocator) {
+	json.PushBack(element, allocator);
 }
 
 template<typename Json>
-void JsonAddArray(Json *pjson, string element,
+void JsonAddArray(Json &json, string element,
 		Document::AllocatorType &allocator) {
-	pjson->PushBack(element.c_str(), allocator);
+	json.PushBack(element.c_str(), allocator);
 }
 
 template<typename Json, typename T>
@@ -224,7 +258,7 @@ void JsonAddArrayByVector(Json &json, vector<T> &fieldValue,
 	const char *field;
 	while (true) {
 		field = va_arg(args, const char *);
-		if (strcmp(field, "\n") == 0) {
+		if (strcmp(field, ENDFIELD) == 0) {
 			break;
 		}
 
@@ -246,7 +280,7 @@ void JsonAddArrayByVector(Json &json, vector<T> &fieldValue,
 	for (typename vector<T>::iterator iter = fieldValue.begin();
 			iter != fieldValue.end(); iter++) {
 
-		JsonAddArray(v, *iter, allocator);
+		JsonAddArray(*v, *iter, allocator);
 	}
 }
 

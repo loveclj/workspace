@@ -1,18 +1,12 @@
 
-#include "common.hpp"
 #include "buildJson.hpp"
+#include "parseJson.hpp"
+
+#include "test/testBuildJson.hpp"
+#include "test/testJsonAPI.hpp"
+#include "test/testParseJson.hpp"
 
 using namespace JSONAPI;
-
-string  doc2str(Document &doc)
-{
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    doc.Accept(writer);
-    string str(buffer.GetString(), buffer.GetSize());
-    return str;
-
-}
 
 
 int main()
@@ -47,10 +41,26 @@ int main()
 	 vs.push_back("st");
 	 vs.push_back("st2");
 
-	 JsonAddArrayByVector<Document>(doc,vs,allocator,"abc","edf","\n");
-	 JsonAddArrayByVector<Document>(doc,vs,allocator,"abc","edf","\n");
+	 JsonAddArrayByVector(doc,vs,allocator,"abc","edf","\n");
+	 JsonAddArrayByVector(doc,vs,allocator,"abc","edf","\n");
 	 //doc["ProjectionExpression"].SetString("te");
 	// doc["ProjectionExpression"].AddMember("a","b",allocator);
 	 cout <<  doc2str(doc) << endl;
+
+
+
+
+
+#if 0
+	 test_JsonAddMember();
+	 test_JsonAddObjByMap();
+	 testJsonAddArray();
+	 testJsonAddArrayByVector();
+	 testGetFromValue();
+	 testGetFieldFromJson();
+	 testGetJsonFromJson();
+	 testGetXXXXFromJson();
+#endif
+
 
 }
